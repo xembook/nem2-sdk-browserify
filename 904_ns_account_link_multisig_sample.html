@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="nem2-sdk-0.13.0.js"></script>
+<script>$(function() {
+const nem = require("/node_modules/nem2-sdk");
+
+//覚え書き
+//Alice Bob Carol Dave Ellen Frank
+//https://hukusuke1007.github.io/nem2-wallet/
+//https://catapult-test.opening-line.jp:3001/account/
+//"generationHash":"453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235"
+//const NODE = 'https://catapult-test.opening-line.jp:3001';
+
+//個人用
+//"generationHash":"3125DF8F8C726660526886BAD6531A51A520845D984BE47943F9F844885CC7CA"
+//private key: CD52E4CA8F6EC1ADBE4BEF392BAD666179A495F87CBC15176F30C8A82EBA90D6
+//public key: 1BCA1267C0A13A6D78219463056B711683A4676A4C7F8883E64F7EC5291E6E51
+//address (mijin-test): SADW6WXZVIUWIJ6RAWFSM4F4SJRUBRVOARXXIFSH
+
+
+const NODE = 'https://catapult-test.opening-line.jp:3001';
+const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
+const transactionHttp = new nem.TransactionHttp(NODE);
+
+const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const bob   = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+
+console.log(alice.address);
+console.log(alice.privateKey);
+
+const wsEndpoint = NODE.replace('https', 'wss');
+const listener = new nem.Listener(wsEndpoint, WebSocket);
+listener.open().then(() => {
+
+    listener
+    .unconfirmedAdded(alice.address)
+    .subscribe(
+        function(_){
+            console.log("--unconfirmed transaction--");
+            console.log(_);
+        },
+        err => console.error(err));
+
+    listener
+    .confirmed(alice.address)
+    .subscribe(
+        function(_){
+            listener.close();
+            buildNamespacedMultisigAccount();
+        },
+        err => console.error(err));
+});
+
+function buildNamespacedMultisigAccount(){
+
+    //ネームスペース作成
+    const namespaceTx = nem.RegisterNamespaceTransaction.createRootNamespace(
+        nem.Deadline.create(),
+        "xembook2",
+        nem.UInt64.fromUint(1),
+        nem.NetworkType.MIJIN_TEST
+    );
+
+    //アカウントとネームスペースのリンク
+    const accountAliasTx = nem.AliasTransaction.createForAddress(
+        nem.Deadline.create(),
+        nem.AliasActionType.Link,
+        namespaceTx.namespaceId,
+        alice.address,
+        nem.NetworkType.MIJIN_TEST
+    );
+
+	//マルチシグ化
+    const multisigTx = nem.ModifyMultisigAccountTransaction.create(
+        nem.Deadline.create(),
+        1,1,
+        [
+            new nem.MultisigCosignatoryModification(
+                nem.MultisigCosignatoryModificationType.Add,
+                bob,
+            )
+        ],
+        nem.NetworkType.MIJIN_TEST
+	);
+
+    const aggregateTransaction = nem.AggregateTransaction.createComplete(
+        nem.Deadline.create(),
+        [
+            namespaceTx.toAggregate(alice.publicAccount),
+            accountAliasTx.toAggregate(alice.publicAccount),
+            multisigTx.toAggregate(alice.publicAccount),
+        ],
+        nem.NetworkType.MIJIN_TEST,
+        []
+    );
+
+    const signedTransaction =  alice.signTransactionWithCosignatories(
+        aggregateTransaction,
+        [bob],
+        GENERATION_HASH,
+    );
+
+    console.log(signedTransaction);
+    transactionHttp
+    .announce(signedTransaction)
+    .subscribe(x => {
+
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTransaction.hash + '/status">' + signedTransaction.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTransaction.hash + '">' + signedTransaction.hash + '</a></li>');
+
+        console.log(x)
+    }, err => console.error(err));
+}
+
+})</script>
+</head>
+<body>
+    <h1>sample</h1>
+    <h3>state確認</h3><div id="items2-ctrl"><ul></ul></div>
+    <h3>confirmed確認</h3><div id="items3-ctrl"><ul></ul></div>
+    <div id="btn-ctrl"><button>送信</button></div>
+</body>
+</html>
