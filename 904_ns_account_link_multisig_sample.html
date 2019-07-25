@@ -73,7 +73,7 @@ function buildNamespacedMultisigAccount(){
         nem.NetworkType.MIJIN_TEST
     );
 
-	//マルチシグ化
+    //マルチシグ化
     const multisigTx = nem.ModifyMultisigAccountTransaction.create(
         nem.Deadline.create(),
         1,1,
@@ -84,7 +84,7 @@ function buildNamespacedMultisigAccount(){
             )
         ],
         nem.NetworkType.MIJIN_TEST
-	);
+    );
 
     const aggregateTransaction = nem.AggregateTransaction.createComplete(
         nem.Deadline.create(),
