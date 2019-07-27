@@ -58,32 +58,6 @@ listener.open().then(() => {
             console.log("==confirmed transaction(bob)==");
         },
         err => console.error(err));
-
-    listener
-    .aggregateBondedAdded(alice.address)
-    .pipe(
-        rxjs.operators.filter((_) => {
-            console.log(_);
-            return !_.signedByAccount(alice.publicAccount)
-
-        }),
-        rxjs.operators.map(_ => cosignAggregateBondedTransaction(_, alice)),
-        rxjs.operators.mergeMap(_ => transactionHttp.announceAggregateBondedCosignature(_))
-    )
-    .subscribe(_ =>{ 
-        console.log(">>Alice cosign<<");
-    }, err => console.error(err));
-
-    listener
-    .aggregateBondedAdded(bob.address)
-    .pipe(
-        rxjs.operators.filter((_) => !_.signedByAccount(bob.publicAccount)),
-        rxjs.operators.map(_ => cosignAggregateBondedTransaction(_, bob)),
-        rxjs.operators.mergeMap(_ => transactionHttp.announceAggregateBondedCosignature(_))
-    )
-    .subscribe(_ =>{ 
-        console.log(">>Bob cosign<<");
-    }, err => console.error(err));
 });
 
 const cosignAggregateBondedTransaction = (transaction, account)  => {
@@ -107,26 +81,16 @@ function buildMultisigAccount(){
         nem.NetworkType.MIJIN_TEST
     );
 
-    //代金支払い
-    const transferTx = nem.TransferTransaction.create(
-        nem.Deadline.create(),
-        bob.address,
-        [nem.NetworkCurrencyMosaic.createRelative(0)],
-        nem.PlainMessage.create('Hello Catapult!'),
-        nem.NetworkType.MIJIN_TEST
-    );
-
     const aggregateTx = nem.AggregateTransaction.createBonded(
         nem.Deadline.create(),
         [
-          transferTx.toAggregate(alice.publicAccount),
             multisigTx.toAggregate(alice.publicAccount),
-
         ],
         nem.NetworkType.MIJIN_TEST
     );
 
-    const signedTx =  alice.sign(aggregateTx, GENERATION_HASH);
+	const signedTx = aggregateTx.signTransactionWithCosignatories(alice, [bob], GENERATION_HASH);
+    //const signedTx =  alice.sign(aggregateTx, GENERATION_HASH);
 
     console.log("signedTx");
     console.log(signedTx);
@@ -137,7 +101,7 @@ function buildMultisigAccount(){
         nem.UInt64.fromUint(480),
         signedTx,
         nem.NetworkType.MIJIN_TEST);
-    
+
     const lockSignedTx = alice.sign(lockTx, GENERATION_HASH);
 
     transactionHttp
