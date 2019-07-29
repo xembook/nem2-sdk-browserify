@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="nem2-sdk-0.13.1.js"></script>
+<script>$(function() {
+const nem = require("/node_modules/nem2-sdk");
+const rxjs = require("/node_modules/rxjs/operators");
+
+const NODE = 'https://catapult-test.opening-line.jp:3001';
+const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
+const transactionHttp = new nem.TransactionHttp(NODE);
+
+const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const bob   = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const carol = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+
+console.log("alice");
+console.log(alice.address);
+console.log(alice.publicKey);
+
+console.log("bob");
+console.log(bob.publicKey);
+console.log(bob);
+
+const wsEndpoint = NODE.replace('https', 'wss');
+const listener = new nem.Listener(wsEndpoint, WebSocket);
+var hasBuilt = false;
+
+listener.open().then(() => {
+
+    listener
+    .unconfirmedAdded(alice.address)
+    .subscribe(
+        function(_){
+            console.log("--unconfirmed transaction(alice)--");
+            console.log(_);
+        },
+        err => console.error(err));
+
+    listener
+    .confirmed(alice.address)
+    .subscribe(
+        function(_){
+            console.log("==confirmed transaction(alice)==");
+            if(!hasBuilt){
+                console.log("start sample program.");
+                buildHandoverProcess();
+                hasBuilt = true;
+            }
+        },
+        err => console.error(err));
+
+    //aliceの中にbobの署名が必要なtxを探す
+    listener
+    .aggregateBondedAdded(alice.address)
+    .pipe(
+        rxjs.filter(_ => !_.signedByAccount(bob.publicAccount)),
+        rxjs.map(_ => bob.signCosignatureTransaction(nem.CosignatureTransaction.create(_))),
+        rxjs.mergeMap(_ => transactionHttp.announceAggregateBondedCosignature(_))
+    )
+    .subscribe(_ =>{ 
+        console.log(">>Bob cosign in Alice partial transaction<<");
+    }, err => console.error(err));
+
+    listener
+    .aggregateBondedAdded(alice.address)
+    .pipe(
+        rxjs.filter(_ => !_.signedByAccount(carol.publicAccount)),
+        rxjs.map(_ => carol.signCosignatureTransaction(nem.CosignatureTransaction.create(_))),
+        rxjs.mergeMap(_ => transactionHttp.announceAggregateBondedCosignature(_))
+    )
+    .subscribe(_ =>{ 
+        console.log(">>Carol cosign in Alice partial transaction<<");
+    }, err => console.error(err));
+});
+
+function buildHandoverProcess(){
+
+    //マルチシグ化
+    const multisigTx = nem.ModifyMultisigAccountTransaction.create(
+        nem.Deadline.create(),
+        1,1,
+        [
+            new nem.MultisigCosignatoryModification(
+                nem.MultisigCosignatoryModificationType.Add, bob,
+            )
+        ],
+        nem.NetworkType.MIJIN_TEST
+    );
+
+    //譲渡
+    const modifyMultisigTx = nem.ModifyMultisigAccountTransaction.create(
+        nem.Deadline.create(),
+        0,0,
+        [
+            new nem.MultisigCosignatoryModification(
+                nem.MultisigCosignatoryModificationType.Add,
+                carol,
+            ),
+            new nem.MultisigCosignatoryModification(
+                nem.MultisigCosignatoryModificationType.Remove,
+                bob,
+            ),
+
+        ],
+        nem.NetworkType.MIJIN_TEST
+    );
+
+	//代金支払い
+    const transferTx = nem.TransferTransaction.create(
+        nem.Deadline.create(),
+        bob.address,
+        [nem.NetworkCurrencyMosaic.createRelative(0)],
+        nem.PlainMessage.create('Thank you for sending alice.'),
+        nem.NetworkType.MIJIN_TEST
+	);
+
+    const aggregateTx = nem.AggregateTransaction.createBonded(
+        nem.Deadline.create(),
+        [
+            multisigTx.toAggregate(alice.publicAccount),
+            modifyMultisigTx.toAggregate(alice.publicAccount),
+            transferTx.toAggregate(carol.publicAccount),
+        ],
+        nem.NetworkType.MIJIN_TEST
+    );
+
+    const signedTx =  alice.sign(aggregateTx, GENERATION_HASH);
+    console.log(signedTx);
+
+    const lockTx = nem.HashLockTransaction.create(
+        nem.Deadline.create(),
+        nem.NetworkCurrencyMosaic.createRelative(10),
+        nem.UInt64.fromUint(480),
+        signedTx,
+        nem.NetworkType.MIJIN_TEST);
+    
+    const lockSignedTx = alice.sign(lockTx, GENERATION_HASH);
+
+    transactionHttp
+    .announce(lockSignedTx)
+    .subscribe(x => {
+    }, err => console.error(err));
+
+    //ロックが承認されたらトランザクションを投げる
+    listener
+    .confirmed(alice.address)
+    .pipe(
+        rxjs.filter((tx) => tx.transactionInfo !== undefined && tx.transactionInfo.hash === lockSignedTx.hash),
+        rxjs.mergeMap(ignored => transactionHttp.announceAggregateBonded(signedTx))
+    )
+    .subscribe(_ => {
+            $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
+            $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
+        },
+        err => console.error(err)
+    );
+}
+
+})</script>
+</head>
+<body>
+    <h1>sample</h1>
+    <h3>state確認</h3><div id="items2-ctrl"><ul></ul></div>
+    <h3>confirmed確認</h3><div id="items3-ctrl"><ul></ul></div>
+</body>
+</html>
