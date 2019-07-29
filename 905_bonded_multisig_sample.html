@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-<script src="https://unpkg.com/rxjs/bundles/rxjs.umd.min.js"></script>
-<script src="nem2-sdk-0.13.0.js"></script>
+<script src="nem2-sdk-0.13.1.js"></script>
 <script>$(function() {
 const nem = require("/node_modules/nem2-sdk");
+const rxjs = require("/node_modules/rxjs/operators");
 
 const NODE = 'https://catapult-test.opening-line.jp:3001';
 const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
@@ -33,7 +33,7 @@ listener.open().then(() => {
     .unconfirmedAdded(alice.address)
     .subscribe(
         function(_){
-            console.log("--unconfirmed transaction--");
+            console.log("--unconfirmed transaction(alice)--");
             console.log(_);
         },
         err => console.error(err));
@@ -43,29 +43,29 @@ listener.open().then(() => {
     .subscribe(
         function(_){
             console.log("==confirmed transaction(alice)==");
-
             if(!hasBuilt){
+                console.log("start sample program.");
                 buildMultisigAccount();
                 hasBuilt = true;
             }
         },
         err => console.error(err));
 
+    //aliceの中にbobの署名が必要なtxを探す
     listener
-    .confirmed(bob.address)
-    .subscribe(
-        function(_){
-            console.log("==confirmed transaction(bob)==");
-        },
-        err => console.error(err));
-});
+    .aggregateBondedAdded(alice.address)
+    .pipe(
+        rxjs.filter((_) => {
+            return !_.signedByAccount(bob.publicAccount)
+        }),
+        rxjs.map(_ => bob.signCosignatureTransaction(nem.CosignatureTransaction.create(_))),
+        rxjs.mergeMap(_ => transactionHttp.announceAggregateBondedCosignature(_))
+    )
+    .subscribe(_ =>{ 
+        console.log(">>Bob cosign in Alice partial transaction<<");
+    }, err => console.error(err));
 
-const cosignAggregateBondedTransaction = (transaction, account)  => {
-    const cosignatureTransaction = nem.CosignatureTransaction.create(transaction);
-    const cosignedTx = account.signCosignatureTransaction(cosignatureTransaction);
-    console.log(cosignedTx);
-    return cosignedTx;
-};
+});
 
 function buildMultisigAccount(){
 
@@ -89,10 +89,7 @@ function buildMultisigAccount(){
         nem.NetworkType.MIJIN_TEST
     );
 
-	const signedTx = aggregateTx.signTransactionWithCosignatories(alice, [bob], GENERATION_HASH);
-    //const signedTx =  alice.sign(aggregateTx, GENERATION_HASH);
-
-    console.log("signedTx");
+    const signedTx =  alice.sign(aggregateTx, GENERATION_HASH);
     console.log(signedTx);
 
     const lockTx = nem.HashLockTransaction.create(
@@ -101,26 +98,24 @@ function buildMultisigAccount(){
         nem.UInt64.fromUint(480),
         signedTx,
         nem.NetworkType.MIJIN_TEST);
-
+    
     const lockSignedTx = alice.sign(lockTx, GENERATION_HASH);
 
     transactionHttp
     .announce(lockSignedTx)
     .subscribe(x => {
-       console.log(">>announce transaction<<")
     }, err => console.error(err));
 
     //ロックが承認されたらトランザクションを投げる
     listener
     .confirmed(alice.address)
     .pipe(
-        rxjs.operators.filter((tx) => tx.transactionInfo !== undefined && tx.transactionInfo.hash === lockSignedTx.hash),
-        rxjs.operators.mergeMap(ignored => transactionHttp.announceAggregateBonded(signedTx))
+        rxjs.filter((tx) => tx.transactionInfo !== undefined && tx.transactionInfo.hash === lockSignedTx.hash),
+        rxjs.mergeMap(ignored => transactionHttp.announceAggregateBonded(signedTx))
     )
     .subscribe(_ => {
             $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
             $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
-            console.log("==lock confirmed==");
         },
         err => console.error(err)
     );
