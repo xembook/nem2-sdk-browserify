@@ -29,3 +29,11 @@ listener
 );
 
 ```
+
+## how to create bundle file
+
+```
+npm install browserify
+npm install nem2-sdk@0.13.1
+browserify -r ./node_modules/nem2-sdk -r ./node_modules/rxjs/operators -o nem2-sdk-0.13.1.js
+```
