@@ -108,14 +108,14 @@ function buildHandoverProcess(){
         nem.NetworkType.MIJIN_TEST
     );
 
-	//代金支払い
+    //代金支払い
     const transferTx = nem.TransferTransaction.create(
         nem.Deadline.create(),
         bob.address,
         [nem.NetworkCurrencyMosaic.createRelative(0)],
         nem.PlainMessage.create('Thank you for sending alice.'),
         nem.NetworkType.MIJIN_TEST
-	);
+    );
 
     const aggregateTx = nem.AggregateTransaction.createBonded(
         nem.Deadline.create(),
