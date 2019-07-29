@@ -32,6 +32,8 @@ listener
 
 ## how to create bundle file
 
+if you want to create bundle file yourself,
+
 ```
 npm install browserify
 npm install nem2-sdk@0.13.1
