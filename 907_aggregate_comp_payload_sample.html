@@ -47,55 +47,54 @@ listener.open().then(() => {
             console.log("==confirmed transaction(alice)==");
             if(!hasBuilt){
                 console.log("start sample program.");
-                buildHandoverProcess();
+                buildProcess();
                 hasBuilt = true;
             }
         },
         err => console.error(err));
 });
 
-
-function buildHandoverProcess(){
+function buildProcess(){
 
     const sendAmount = nem.NetworkCurrencyMosaic.createRelative(10);
     const backAmount = nem.NetworkCurrencyMosaic.createRelative(1);
 
-    const aliceTransferTransaction = nem.TransferTransaction.create(nem.Deadline.create(), bob.address, [sendAmount],   nem.PlainMessage.create('payout'), nem.NetworkType.MIJIN_TEST);
-    const bobTransferTransaction   = nem.TransferTransaction.create(nem.Deadline.create(), alice.address, [backAmount], nem.PlainMessage.create('payout'), nem.NetworkType.MIJIN_TEST);
+    const aliceTx = nem.TransferTransaction.create(nem.Deadline.create(), bob.address, [sendAmount],   nem.PlainMessage.create('payout'), nem.NetworkType.MIJIN_TEST);
+    const bobTx   = nem.TransferTransaction.create(nem.Deadline.create(), alice.address, [backAmount], nem.PlainMessage.create('payout'), nem.NetworkType.MIJIN_TEST);
 
     //署名台帳作成
     const aggregateTransaction = nem.AggregateTransaction.createComplete(
         nem.Deadline.create(),
         [
-            aliceTransferTransaction.toAggregate(alice.publicAccount),
-            bobTransferTransaction.toAggregate(bob.publicAccount)
+            aliceTx.toAggregate(alice.publicAccount),
+            bobTx.toAggregate(bob.publicAccount)
         ],
         nem.NetworkType.MIJIN_TEST,
         []
     );
 
     //Aliceで署名してシリアライズをBobに渡す
-    const aliceSignedTransaction = aggregateTransaction.signWith(alice, GENERATION_HASH);
+    const aliceSignedTx = aggregateTransaction.signWith(alice, GENERATION_HASH);
 
     //別端末でBobが署名
-    const signedTxBob = nem.CosignatureTransaction.signTransactionPayload(bob, aliceSignedTransaction.payload, GENERATION_HASH);
-    console.log(signedTxBob);
+    const bobSignedTx = nem.CosignatureTransaction.signTransactionPayload(bob, aliceSignedTx.payload, GENERATION_HASH);
+    console.log(bobSignedTx);
 
     //Alice側でまとめてTx再作成→アナウンス
-    const cosignatureSignedTransactions = [
-        new nem.CosignatureSignedTransaction(signedTxBob.parentHash, signedTxBob.signature, signedTxBob.signer)
+    const cosignSignedTxs = [
+        new nem.CosignatureSignedTransaction(bobSignedTx.parentHash, bobSignedTx.signature, bobSignedTx.signer)
     ];
-    const recreatedTx = nem.TransactionMapping.createFromPayload(aliceSignedTransaction.payload);
-    const signedTransaction = recreatedTx.signTransactionGivenSignatures(alice, cosignatureSignedTransactions, GENERATION_HASH);
-    console.log(signedTransaction.payload);
+    const recreatedTx = nem.TransactionMapping.createFromPayload(aliceSignedTx.payload);
+    const signedTx = recreatedTx.signTransactionGivenSignatures(alice, cosignSignedTxs, GENERATION_HASH);
+    console.log(signedTx.payload);
 
     const transactionHttp = new nem.TransactionHttp(NODE);
     transactionHttp
-    .announce(signedTransaction)
+    .announce(signedTx)
     .subscribe(x =>{ 
         console.log(x);
-        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTransaction.hash + '/status">' + signedTransaction.hash + '</a></li>');
-        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTransaction.hash + '">' + signedTransaction.hash + '</a></li>');
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
     }, 
     err => console.error(err)
     );
