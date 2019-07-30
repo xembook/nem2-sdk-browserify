@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"></script>
+<script src="nem2-sdk-0.13.1.js"></script>
+<script>$(function() {
+
+const nem = require("/node_modules/nem2-sdk");
+const rxjs = require("/node_modules/rxjs/operators");
+
+const alicePublic  = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const alicePrivate = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+
+const bobPublic  = nem.Account.createFromPrivateKey('C78DDE3257AAEDE05F9EA150E87EF1A81DCC5B03530FCC8168B3BCED8904E8F8', nem.NetworkType.MIJIN_TEST);
+const bobPrivate = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST); //空
+
+console.log("alice public");
+console.log(alicePublic.address);
+console.log(alicePublic.publicKey);
+
+const NODE_PUBLIC = "https://catapult-test.opening-line.jp:3001";
+const GEN_HASH_PUBLIC = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
+const txHttpPublic  = new nem.TransactionHttp(NODE_PUBLIC);
+
+const NODE_PRIVATE = "http://52.69.32.84:3000";
+const txHttpPrivate = new nem.TransactionHttp(NODE_PRIVATE);
+const GEN_HASH_PRIVATE = "3125DF8F8C726660526886BAD6531A51A520845D984BE47943F9F844885CC7CA";
+const hash = sha3_256.create();
+const random = nem.Crypto.randomBytes(10);
+const aliceSecret = hash.update(random).hex().toUpperCase();
+console.log(aliceSecret);
+
+const wsEndpointPublic = NODE_PUBLIC.replace('https', 'wss');
+const listenerPublic = new nem.Listener(wsEndpointPublic, WebSocket);
+
+var hasBuilt = false;
+listenerPublic.open().then(() => {
+
+    listenerPublic
+    .unconfirmedAdded(alicePublic.address)
+    .subscribe(
+        function(_){
+            console.log("--unconfirmed transaction(alice)--");
+            console.log(_);
+        },
+        err => console.error(err));
+
+    listenerPublic
+    .confirmed(alicePublic.address)
+    .subscribe(
+        function(_){
+            console.log("==confirmed transaction(alice)==");
+            if(!hasBuilt){
+                console.log("start sample program.");
+                buildProcess();
+                hasBuilt = true;
+            }
+        },
+        err => console.error(err));
+});
+
+function buildProcess(){
+
+
+	//public Alice->Lock(Bob) 
+	const lockTxPublic = nem.SecretLockTransaction.create(
+	    nem.Deadline.create(),
+	    nem.NetworkCurrencyMosaic.createRelative(1),
+	    nem.UInt64.fromUint(96 * 3600 / 15),
+	    nem.HashType.Op_Sha3_256,
+	    aliceSecret,
+	    bobPublic.address,
+	    nem.NetworkType.MIJIN_TEST
+	);
+
+	const lockTxPublicSigned = alicePublic.sign(lockTxPublic, GEN_HASH_PUBLIC);
+	txHttpPublic
+	.announce(lockTxPublicSigned)
+	.subscribe(x => {
+		console.log(x);
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE_PUBLIC + '/transaction/' + lockTxPublicSigned.hash + '/status">' + lockTxPublicSigned.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE_PUBLIC + '/transaction/' + lockTxPublicSigned.hash + '">' + lockTxPublicSigned.hash + '</a></li>');
+
+	}, err => console.error(err));
+
+	//private Bob->Lock(Alice)
+	const lockTxPrivate = nem.SecretLockTransaction.create(
+	    nem.Deadline.create(),
+	    nem.NetworkCurrencyMosaic.createRelative(1),
+	    nem.UInt64.fromUint(84 * 3600 / 15),
+	    nem.HashType.Op_Sha3_256,
+	    aliceSecret,
+	    alicePrivate.address,
+	    nem.NetworkType.MAIN_NET
+	);
+
+	const lockTxPrivateSigned = bobPrivate.sign(lockTxPrivate, GEN_HASH_PRIVATE);
+	txHttpPrivate
+	.announce(lockTxPrivateSigned)
+	.subscribe(x => {
+		console.log(x);
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE_PRIVATE + '/transaction/' + lockTxPrivateSigned.hash + '/status">' + lockTxPrivateSigned.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE_PRIVATE + '/transaction/' + lockTxPrivateSigned.hash + '">' + lockTxPrivateSigned.hash + '</a></li>');
+
+	}, err => console.error(err));
+
+	//答え
+	const aliceProof = random.toString('hex');
+
+	//private (Lock)Bob->Alice 作ったaliceProofで取り出す
+	const proofTxPrivate = nem.SecretProofTransaction.create(
+	    nem.Deadline.create(),
+	    nem.HashType.Op_Sha3_256,
+	    aliceSecret,
+	    alicePrivate.address,
+	    aliceProof,
+	    nem.NetworkType.MAIN_NET
+	);
+
+	const proofTxPrivateSigned = alicePrivate.sign(proofTxPrivate, GEN_HASH_PRIVATE);
+	txHttpPrivate
+	.announce(proofTxPrivateSigned)
+	.subscribe(x => {
+		console.log(x);
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE_PRIVATE + '/transaction/' + proofTxPrivateSigned.hash + '/status">' + proofTxPrivateSigned.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE_PRIVATE + '/transaction/' + proofTxPrivateSigned.hash + '">' + proofTxPrivateSigned.hash + '</a></li>');
+
+	}, err => console.error(err));
+
+	//public (Lock)Alice-> Bob 教えてもらったaliceProofで取り出す
+	const proofTxPublic = nem.SecretProofTransaction.create(
+	    nem.Deadline.create(),
+	    nem.HashType.Op_Sha3_256,
+	    aliceSecret,
+	    bobPublic.address,
+	    aliceProof,
+	    nem.NetworkType.MIJIN
+	);
+
+	const proofTxPublicSigned = bobPublic.sign(proofTxPublic, GEN_HASH_PUBLIC);
+	txHttpPublic
+	.announce(proofTxPublicSigned)
+	.subscribe(x => {
+		console.log(x);
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE_PUBLIC + '/transaction/' + proofTxPublicSigned.hash + '/status">' + proofTxPublicSigned.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE_PUBLIC + '/transaction/' + proofTxPublicSigned.hash + '">' + proofTxPublicSigned.hash + '</a></li>');
+
+	}, err => console.error(err));
+}
+
+});</script>
+</head>
+<body>
+    <h1>sample</h1>
+    <h3>state確認</h1><div id="items2-ctrl"><ul></ul></div>
+    <h3>confirmed確認</h1><div id="items3-ctrl"><ul></ul></div>
+</body>
+</html>
