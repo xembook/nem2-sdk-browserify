@@ -7,13 +7,6 @@
 	<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
 
 	<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
-<!--
-
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/js-sha3/0.8.0/sha3.min.js"></script>
-	<script src="../extlib/coders/convert.js"></script>
-	<script src="../bundle.js"></script>
-	<script src="../xembook2-sdk.js"></script>
--->
 	<script src="nem2-sdk-0.13.1.js"></script>
 
 <script>
@@ -191,6 +184,14 @@ $(function(){
 //		$(LI).append("array: " + type).appendTo(ul2);
 		$(LI).append("hex: 0x" + typeHex).appendTo(ul2);
 		$(LI).append("value: " + getValueFromArray(type)).appendTo(ul2);
+
+		Object.keys(txType).forEach(function (key) {
+			if(typeHex == txType[key]){
+				$(LI).append("name: " + key).appendTo(ul2);
+			}
+		});
+
+
 
 		return {typeHex:typeHex,arrayUnAnalyzed:arrayTx};
 	}
@@ -406,6 +407,7 @@ $(function(){
 //		$(LI).append("array: " + size).appendTo(ul);
 		$(LI).append("value: " + getValueFromArray(size)).appendTo(ul);
 		return arrayTx;
+
 	}
 
 	function appendRaw(arrayTx,parentUl,keyName,number){
