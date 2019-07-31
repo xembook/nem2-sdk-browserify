@@ -15,9 +15,6 @@ const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FC
 const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
 const bob   = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
 
-//指定モザイク以外の受信を禁止する。
-//送信を禁止する。
-
 console.log("alice");
 console.log(alice.address);
 console.log(alice.publicKey);
@@ -155,7 +152,7 @@ function buildProcess(){
     const txHttp = new nem.TransactionHttp(NODE);
     txHttp
     .announce(signedTx)
-    .subscribe(x =>{ 
+    .subscribe(x =>{
         console.log(x)
         $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
         $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
