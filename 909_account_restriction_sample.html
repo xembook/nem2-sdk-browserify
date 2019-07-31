@@ -78,7 +78,7 @@ function buildProcess(){
         nem.NetworkType.MIJIN_TEST
     );
 
-	//Bobにフィルター作成
+    //Bobにフィルター作成
     const operationFilter = nem.AccountRestrictionModification.createForOperation(
         nem.RestrictionModificationType.Add,
         nem.TransactionType.TRANSFER ,
@@ -91,7 +91,7 @@ function buildProcess(){
         nem.NetworkType.MIJIN_TEST,
     );
 
-	//
+    //
     const mosaicFilter = nem.AccountRestrictionModification.createForMosaic(
         nem.RestrictionModificationType.Add,
         nem.NetworkCurrencyMosaic.NAMESPACE_ID,
@@ -110,9 +110,9 @@ function buildProcess(){
         nem.Deadline.create(),
         bob.address,
         [
-//			nem.NetworkCurrencyMosaic.createRelative(0),
-			new nem.Mosaic(mosaicDefTx.mosaicId , nem.UInt64.fromUint(1000))
-		],
+//          nem.NetworkCurrencyMosaic.createRelative(0),
+            new nem.Mosaic(mosaicDefTx.mosaicId , nem.UInt64.fromUint(1000))
+        ],
         nem.PlainMessage.create('send mosaic'),
         nem.NetworkType.MIJIN_TEST
     );
@@ -121,9 +121,9 @@ function buildProcess(){
         nem.Deadline.create(),
         alice.address,
         [
-//			nem.NetworkCurrencyMosaic.createRelative(0),
-			new nem.Mosaic(mosaicDefTx.mosaicId , nem.UInt64.fromUint(1000))
-		],
+//          nem.NetworkCurrencyMosaic.createRelative(0),
+            new nem.Mosaic(mosaicDefTx.mosaicId , nem.UInt64.fromUint(1000))
+        ],
         nem.PlainMessage.create('back mosaic'),
         nem.NetworkType.MIJIN_TEST
     );
@@ -149,18 +149,18 @@ function buildProcess(){
         GENERATION_HASH,
     );
 
-//	const signedTx = alice.sign(aggregateTx,GENERATION_HASH);
-	console.log(signedTx);
+//  const signedTx = alice.sign(aggregateTx,GENERATION_HASH);
+    console.log(signedTx);
 
-	const txHttp = new nem.TransactionHttp(NODE);
-	txHttp
-	.announce(signedTx)
-	.subscribe(x =>{ 
-		console.log(x)
+    const txHttp = new nem.TransactionHttp(NODE);
+    txHttp
+    .announce(signedTx)
+    .subscribe(x =>{ 
+        console.log(x)
         $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
         $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
 
-	}, err => console.error(err));
+    }, err => console.error(err));
 }
 
 </script>
