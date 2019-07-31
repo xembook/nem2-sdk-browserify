@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="nem2-sdk-0.13.1.js"></script>
+<script>
+const nem = require("/node_modules/nem2-sdk");
+const rxjs = require("/node_modules/rxjs/operators");
+
+const NODE = 'https://catapult-test.opening-line.jp:3001';
+const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
+
+const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const bob   = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+
+console.log("alice");
+console.log(alice.address);
+console.log(alice.publicKey);
+
+const wsEndpoint = NODE.replace('https', 'wss');
+const listener = new nem.Listener(wsEndpoint, WebSocket);
+
+var hasBuilt = false;
+listener.open().then(() => {
+
+    listener
+    .unconfirmedAdded(alice.address)
+    .subscribe(
+        function(_){
+            console.log("--unconfirmed transaction(alice)--");
+            console.log(_);
+        },
+        err => console.error(err));
+
+    listener
+    .confirmed(alice.address)
+    .subscribe(
+        function(_){
+            console.log("==confirmed transaction(alice)==");
+            if(!hasBuilt){
+                console.log("[[start sample program]]");
+                buildProcess();
+                hasBuilt = true;
+            }
+        },
+        err => console.error(err));
+});
+
+
+function buildProcess(){
+
+    const operationFilter = nem.AccountRestrictionModification.createForOperation(
+        nem.RestrictionModificationType.Add,
+        nem.TransactionType.TRANSFER ,
+    );
+
+    const operationTx = nem.AccountRestrictionTransaction.createOperationRestrictionModificationTransaction(
+        nem.Deadline.create(),
+        nem.RestrictionType.AllowTransaction,
+        [operationFilter],
+        nem.NetworkType.MIJIN_TEST,
+    );
+
+    //代金支払い
+    const sendTransferTx = nem.TransferTransaction.create(
+        nem.Deadline.create(),
+        bob.address,
+        [
+            nem.NetworkCurrencyMosaic.createRelative(0),
+        ],
+        nem.PlainMessage.create('send mosaic'),
+        nem.NetworkType.MIJIN_TEST
+    );
+
+
+    //集約
+    const aggregateTx = nem.AggregateTransaction.createComplete(
+        nem.Deadline.create(),
+        [
+            operationTx.toAggregate(alice.publicAccount),
+            sendTransferTx.toAggregate(alice.publicAccount),
+        ],
+        nem.NetworkType.MIJIN_TEST,
+        []
+    );
+
+    const signedTx = alice.sign(aggregateTx,GENERATION_HASH);
+    console.log(signedTx);
+
+    const txHttp = new nem.TransactionHttp(NODE);
+    txHttp
+    .announce(signedTx)
+    .subscribe(x =>{ 
+        console.log(x)
+        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
+        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
+
+    }, err => console.error(err));
+}
+
+</script>
+</head>
+<body>
+    <h1>sample</h1>
+    <h3>state確認</h3><div id="items2-ctrl"><ul></ul></div>
+    <h3>confirmed確認</h3><div id="items3-ctrl"><ul></ul></div>
+</body>
+</html>
