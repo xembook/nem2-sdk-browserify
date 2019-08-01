@@ -7,9 +7,10 @@ this is nemtech/nem2-sdk-typescript-javascript for browser
 <script src="nem2-sdk-0.13.1.js"></script>
 ```
 
-```
+```js
 const nem = require("/node_modules/nem2-sdk");
 const rxjs = require("/node_modules/rxjs/operators");
+const sha3_256 = require("/node_modules/sha3_256");
 ```
 
 then, you can use like this.
@@ -37,5 +38,5 @@ if you want to create bundle file yourself,
 ```
 npm install browserify
 npm install nem2-sdk@0.13.1
-browserify -r ./node_modules/nem2-sdk -r ./node_modules/rxjs/operators -o nem2-sdk-0.13.1.js
+browserify -r ./node_modules/nem2-sdk -r ./node_modules/rxjs/operators -r ./node_modules/js-sha3 -o nem2-sdk-0.13.1.js
 ```
