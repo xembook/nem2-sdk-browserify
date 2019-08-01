@@ -33,7 +33,7 @@ const listener = new nem.Listener(wsEndpoint, WebSocket);
 var hasBuilt = false;
 listener.open().then(() => {
 
-	//未承認データ受信トリガー
+    //未承認データ受信トリガー
     listener
     .unconfirmedAdded(alice.address)
     .subscribe(
@@ -42,9 +42,9 @@ listener.open().then(() => {
             console.log(_);
         },
         err => console.error(err)
-	);
+    );
 
-	//承認データ受信トリガー
+    //承認データ受信トリガー
     listener
     .confirmed(alice.address)
     .subscribe(
@@ -57,21 +57,21 @@ listener.open().then(() => {
             }
         },
         err => console.error(err)
-	);
+    );
 
-	//ここにリスナーを追加します。
+    //ここにリスナーを追加します。
 });
 
 //サンプルプログラム開始
 function buildProcess(){
 
-	//ここでトランザクションを作成します。
+    //ここでトランザクションを作成します。
 
-	//署名
+    //署名
     const signedTx = alice.sign(tx,GENERATION_HASH);
     console.log(signedTx);
 
-	//アナウンス
+    //アナウンス
     txHttp
     .announce(signedTx)
     .subscribe(x =>{
@@ -90,9 +90,9 @@ function appendInfo(node,signedTx,account){
 
 //ボタンイベント
 $("#btn1").click(
-	function(){
-		return false;
-	}
+    function(){
+        return false;
+    }
 );
 
 })</script>
