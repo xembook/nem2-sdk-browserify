@@ -13,7 +13,7 @@ const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FC
 
 const nem = require("/node_modules/nem2-sdk");
 const rxjs = require("/node_modules/rxjs/operators");
-//const sha3_256 = require("/node_modules/sha3_256");
+const sha3_256 = require("/node_modules/js-sha3").sha3_256;
 
 const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
 const bob = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
