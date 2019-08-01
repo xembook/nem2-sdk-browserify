@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,minimum-scale=1.0">
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+<script src="nem2-sdk-0.13.1.js"></script>
+<script>$(function() {
+
+//接続情報
+const NODE = 'https://catapult-test.opening-line.jp:3001';
+const GENERATION_HASH = "453052FDC4EB23BF0D7280C103F7797133A633B68A81986165B76FCE248AB235";
+
+const nem = require("/node_modules/nem2-sdk");
+const rxjs = require("/node_modules/rxjs/operators");
+//const sha3_256 = require("/node_modules/sha3_256");
+
+const alice = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const bob = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const carol = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const dave = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const ellen = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+const frank = nem.Account.generateNewAccount(nem.NetworkType.MIJIN_TEST);
+
+console.log("alice");
+console.log(alice.address);
+console.log(alice.publicKey);
+
+const txHttp = new nem.TransactionHttp(NODE);
+const wsEndpoint = NODE.replace('https', 'wss');
+const listener = new nem.Listener(wsEndpoint, WebSocket);
+
+var hasBuilt = false;
+listener.open().then(() => {
+
+	//未承認データ受信トリガー
+    listener
+    .unconfirmedAdded(alice.address)
+    .subscribe(
+        function(_){
+            console.log("--unconfirmed transaction(alice)--");
+            console.log(_);
+        },
+        err => console.error(err)
+	);
+
+	//承認データ受信トリガー
+    listener
+    .confirmed(alice.address)
+    .subscribe(
+        function(_){
+            console.log("==confirmed transaction(alice)==");
+            if(!hasBuilt){
+                console.log("[[start sample program]]");
+                buildProcess();
+                hasBuilt = true;
+            }
+        },
+        err => console.error(err)
+	);
+
+	//ここにリスナーを追加します。
+});
+
+//サンプルプログラム開始
+function buildProcess(){
+
+	//ここでトランザクションを作成します。
+
+	//署名
+    const signedTx = alice.sign(tx,GENERATION_HASH);
+    console.log(signedTx);
+
+	//アナウンス
+    txHttp
+    .announce(signedTx)
+    .subscribe(x =>{
+        console.log(x)
+        appendInfo(NODE,signedTx,alice);
+    }, err => console.error(err));
+}
+
+//結果出力
+function appendInfo(node,signedTx,account){
+
+    $('#items1 ul').append('<li><a target="_blank" href="' + node + '/account/' + account.pulicKey + '">' + account.address.address + '</a></li>');
+    $('#items2 ul').append('<li><a target="_blank" href="' + node + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
+    $('#items3 ul').append('<li><a target="_blank" href="' + node + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
+}
+
+//ボタンイベント
+$("#btn1").click(
+	function(){
+		return false;
+	}
+);
+
+})</script>
+</head>
+<body>
+    <h1>sample</h1>
+    <div id="btn1"><button>送信</button></div>
+    <h3>account</h3><div id="items1"><ul></ul></div>
+    <h3>state</h3><div id="items2"><ul></ul></div>
+    <h3>confirmed</h3><div id="items3"><ul></ul></div>
+</body>
+</html>
