@@ -29,6 +29,9 @@ listener
 .subscribe(_ => console.log(_), err => console.error(err)
 );
 
+//sha3_256 sample
+const hash = sha3_256.create();
+
 ```
 
 ## how to create bundle file
