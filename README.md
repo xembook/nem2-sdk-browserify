@@ -10,7 +10,7 @@ this is nemtech/nem2-sdk-typescript-javascript for browser
 ```js
 const nem = require("/node_modules/nem2-sdk");
 const rxjs = require("/node_modules/rxjs/operators");
-const sha3_256 = require("/node_modules/sha3_256");
+const sha3_256 = require("/node_modules/sha3_256").sha3_256;
 ```
 
 then, you can use like this.
