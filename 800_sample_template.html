@@ -70,13 +70,13 @@ function buildProcess(){
     //署名
     const signedTx = alice.sign(tx,GENERATION_HASH);
     console.log(signedTx);
+    appendInfo(NODE,signedTx,alice);
 
     //アナウンス
     txHttp
     .announce(signedTx)
     .subscribe(x =>{
         console.log(x)
-        appendInfo(NODE,signedTx,alice);
     }, err => console.error(err));
 }
 

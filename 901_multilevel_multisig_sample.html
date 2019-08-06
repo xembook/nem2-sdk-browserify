@@ -102,13 +102,11 @@ function buildProcess(){
         GENERATION_HASH,
     );
 
+    appendInfo(NODE,signedTx,alice);
+
     txHttp
     .announce(signedTx)
     .subscribe(x => {
-
-        $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
-        $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
-
         console.log(x)
     }, err => console.error(err));
 
@@ -146,24 +144,30 @@ function buildProcess(){
             );
 
             console.log(signedTx2);
-            $('#items2-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx2.hash + '/status">' + signedTx2.hash + '</a></li>');
-            $('#items3-ctrl ul').append('<li><a target="_blank" href="' + NODE + '/transaction/' + signedTx2.hash + '">' + signedTx2.hash + '</a></li>');
-
+            appendInfo(NODE,signedTx2,alice.pulicAccount);
             return txHttp.announce(signedTx2)
         })
     )
     .subscribe(x => {
         console.log(x);
-
     }, err => console.error(err));
+}
+
+//結果出力
+function appendInfo(node,signedTx,account){
+
+
+    $('#items1 ul').append('<li><a target="_blank" href="' + node + '/account/' + account.publicKey + '">' + account.address.address + '</a></li>');
+    $('#items2 ul').append('<li><a target="_blank" href="' + node + '/transaction/' + signedTx.hash + '/status">' + signedTx.hash + '</a></li>');
+    $('#items3 ul').append('<li><a target="_blank" href="' + node + '/transaction/' + signedTx.hash + '">' + signedTx.hash + '</a></li>');
 }
 
 })</script>
 </head>
 <body>
     <h1>sample</h1>
-    <h3>state確認</h3><div id="items2-ctrl"><ul></ul></div>
-    <h3>confirmed確認</h3><div id="items3-ctrl"><ul></ul></div>
-    <div id="btn-ctrl"><button>送信</button></div>
+    <h3>account</h3><div id="items1"><ul></ul></div>
+    <h3>state</h3><div id="items2"><ul></ul></div>
+    <h3>confirmed</h3><div id="items3"><ul></ul></div>
 </body>
 </html>
