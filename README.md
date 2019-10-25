@@ -4,7 +4,7 @@ this is nemtech/nem2-sdk-typescript-javascript for browser
 ## how to use
 
 ```
-<script src="nem2-sdk-0.13.1.js"></script>
+<script src="nem2-sdk-0.14.3.js"></script>
 ```
 
 ```js
