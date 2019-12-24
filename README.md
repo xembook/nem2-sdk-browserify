@@ -4,7 +4,7 @@ this is nemtech/nem2-sdk-typescript-javascript for browser
 ## how to use
 
 ```
-<script src="nem2-sdk-0.14.3.js"></script>
+<script src="nem2-sdk-0.15.0.js"></script>
 ```
 
 ```js
@@ -40,6 +40,6 @@ if you want to create bundle file yourself,
 
 ```
 npm install browserify
-npm install nem2-sdk@0.13.1
-browserify -r ./node_modules/nem2-sdk -r ./node_modules/rxjs/operators -r ./node_modules/js-sha3 -o nem2-sdk-0.13.1.js
+npm install nem2-sdk@0.15.0
+ browserify -r ./node_modules/nem2-sdk -r ./node_modules/rxjs/operators -r ./node_modules/js-sha3 -r ./node_modules/buffer -o nem2-sdk-0.15.0.js
 ```
